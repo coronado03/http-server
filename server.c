@@ -10,63 +10,64 @@
 #define MYPORT "3490"
 #define BACKLOG 10
 
-void get_request_method(char *dest, char *path_dest, char *request,
-                        int *string_index) {
+void get_request_method(char *method_dest, char *request) {
+  int index = 0;
 
-  char current_letter;
-  while (!isspace(current_letter)) {
-    current_letter = request[*string_index];
-    if (!isspace(current_letter)) {
-      dest[*string_index] = current_letter;
-      printf("Current Letter: %c\n", current_letter);
-    }
-    (*string_index)++;
+  while (!isspace(request[index])) {
+    method_dest[index] = request[index];
+    index++;
   }
-  while (!isspace(current_letter)) {
-    current_letter = request[*string_index];
-    if (!isspace(current_letter)) {
-      path_dest[*string_index] = current_letter;
-      printf("Current Letter: %c\n", current_letter);
-    }
-    (*string_index)++;
-  }
+
+  method_dest[index] = '\0';
 }
 
-void get_request_path(char *dest, char *request) {
+void get_request_url(char *method_dest, char *request) {
+  int url_index, request_index = 0;
 
-  char current_letter;
-  int string_index = 0;
-  while (!isspace(current_letter)) {
-    current_letter = request[string_index];
-    if (!isspace(current_letter)) {
-      dest[string_index] = current_letter;
-      printf("Current Letter: %c\n", current_letter);
-    }
-    string_index++;
+  do {
+    request_index++;
+  } while (!isspace(request[request_index]));
+  request_index++;
+
+  while (!isspace(request[request_index])) {
+    method_dest[url_index] = request[request_index];
+    url_index++;
+    request_index++;
   }
+
+  method_dest[url_index] = '\0';
 }
 
-void read_file() {
-  FILE *fptr;
+void get_file_data() {
+  FILE *fptr = fopen("./index.html", "r");
+  if (fptr == NULL) {
+    printf("TS don't work");
+    return;
+  }
 
-  fptr = fopen("index.html", "r");
-  char myString[100];
-  fgets(myString, 100, fptr);
-  printf("%s", myString);
+  char myString[300];
+
+  while (fgets(myString, 100, fptr) != NULL) {
+    printf("%s", myString);
+  }
+
+  printf("HTML: %s", myString);
+
   fclose(fptr);
 }
 
 void request_parser(char *request, char *response, int response_len) {
+  char request_method[8];
+  char request_url[236];
 
-  int string_index = 0;
-  char request_method[5];
-  char request_path[10];
+  get_request_method(request_method, request);
+  get_request_url(request_url, request);
+  get_file_data();
 
-  get_request_method(request_method, request_path, request, &string_index);
+  printf("Request Method: %s\n", request_method);
+  printf("Request Path: %s\n", request_url);
 
-  printf("Req mesg beep bop: %s\n", request);
-  printf("Request Method beep bop: %s\n", request_method);
-  printf("Request Path  beep bop: %s\n", request_path);
+  printf("%s\n", request);
 };
 
 int main() {
@@ -86,25 +87,27 @@ int main() {
 
   printf("Server running on port %s...\n", MYPORT);
 
-  listen(socketfd, BACKLOG);
+  while (1) {
+    listen(socketfd, BACKLOG);
 
-  addr_size = sizeof client_addr;
-  new_fd = accept(socketfd, (struct sockaddr *)&client_addr, &addr_size);
+    addr_size = sizeof client_addr;
+    new_fd = accept(socketfd, (struct sockaddr *)&client_addr, &addr_size);
 
-  int len, bytes_sent, bytes_received;
-  char *response_message = "HTTP/1.1 200 OK\r\n"
-                           "Server: localhost\r\n"
-                           "Content-Type: text/html\r\n"
-                           "Content-Length: 44\r\n"
-                           "\r\n"
-                           "<html><body>This is a test</body></html>";
-  char request_message[1024];
+    int len, bytes_sent, bytes_received;
+    char *response_message = "HTTP/1.1 200 OK\r\n"
+                             "Server: localhost\r\n"
+                             "Content-Type: text/html\r\n"
+                             "Content-Length: 44\r\n"
+                             "\r\n"
+                             "<html><body> BEEP BOOP BLABLA</body></html>";
+    char request_message[1024];
 
-  bytes_received =
-      recv(new_fd, request_message, sizeof(request_message) - 1, 0);
-  len = strlen(response_message);
+    bytes_received =
+        recv(new_fd, request_message, sizeof(request_message) - 1, 0);
+    len = strlen(response_message);
 
-  request_parser(request_message, response_message, len);
+    request_parser(request_message, response_message, len);
 
-  bytes_sent = send(new_fd, response_message, len, 0);
+    bytes_sent = send(new_fd, response_message, len, 0);
+  }
 }
